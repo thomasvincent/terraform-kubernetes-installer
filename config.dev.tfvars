@@ -24,3 +24,17 @@ subnet = {
   availability_zone = "us-west-2a"
 }
 
+
+# In-bound Traffic Controls (Security Group Ingress)
+
+security_group_ingress = {
+  master.ssh = ["0.0.0.0/0"]
+  minion.ssh = ["0.0.0.0/0"]
+  master.https = ["0.0.0.0/0"]
+}
+
+# SSH Key Setup
+ssh_key = {
+# Creates a new SSH Key file if the file does not exist. (Specify w/o .pub)
+  key_file = "~/abc"
+}
