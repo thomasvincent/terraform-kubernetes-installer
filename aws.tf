@@ -1,3 +1,5 @@
+# https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aws_under_the_hood.md
+
 variable "region" {}
 provider "aws" {
   region = "${var.region}"
@@ -225,14 +227,10 @@ module "master_https_security_group_ingress" {
 /* SSH Key setup */
 variable "ssh_key" {type = "map"}
 
-module "key_setup" {
-  source = "./modules/util_key_setup"
-  key_file = "${var.ssh_key["key_file"]}"
-}
-/*
 module "key_pair" {
   source = "./modules/aws_key_pair"
-  key_name = "${module.key_setup.name}"
-  public_key = "${module.key_setup.public_key}"
+  key_name = "${file("init/fingerprint.txt")}"
+  public_key = "${file(var.ssh_key["key_file"])}"
 } 
-*/
+
+
