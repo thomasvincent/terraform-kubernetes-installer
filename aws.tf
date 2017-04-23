@@ -1,17 +1,57 @@
 # https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aws_under_the_hood.md
 
+/* Cluster Helper Module */
+variable "provider" {}
+variable "zone" {}
+variable "cluster_name" {}
+variable "vpc_name" {}
+variable "master_host_number" {}
+variable "images" {type="map"}
+variable "size" {type="map"}
 variable "region" {}
-provider "aws" {
+variable "vpc" {type="map"}
+variable "iam_role" {type="map"}
+variable "iam_role_policy" {type="map"}
+variable "subnet" {type="map"}
+variable "security_group_ingress" {type="map"}
+variable "ssh_key" {type = "map"}
+variable "associate_public_ip_address" {}
+variable "spot_price" {}
+variable "number_of_minions" {type="map"}
+
+module "cluster" {
+  source = "./modules/util_cluster"
+  cluster_name = "${var.cluster_name}"
+  zone = "${var.zone}"
+  provider = "${var.provider}"
+  vpc_name = "${var.vpc_name}"
+  subnet_cidr = "${var.subnet["cidr_block"]}"
   region = "${var.region}"
+  master_host_number = "${var.master_host_number}"
+  images = "${var.images}"
+  size = "${var.size}"
+  region = "${var.region}"
+  vpc = "${var.vpc}"
+  iam_role = "${var.iam_role}"
+  iam_role_policy = "${var.iam_role_policy}"
+  subnet = "${var.subnet}"
+  security_group_ingress = "${var.security_group_ingress}"
+  ssh_key = "${var.ssh_key}" 
+  associate_public_ip_address = "${var.associate_public_ip_address}" 
+  spot_price = "${var.spot_price}" 
+  number_of_minions = "${var.number_of_minions}" 
+}
+
+provider "aws" {
+  region = "${module.cluster.region}"
 }
 
 
 #VPC
-variable "vpc" {type="map"}
 
 module "vpc" {
   source = "./modules/aws_vpc"
-  cidr_block = "${var.vpc["cidr_block"]}"
+  cidr_block = "${module.cluster.vpc["cidr_block"]}"
 }
 
 output "vpc_id" {
@@ -21,57 +61,59 @@ output "vpc_id" {
 # IAM Profile Modules ....
 
 /* IAM Role */
-variable "iam_role" {type="map"}
 
 module "master_iam_role" {
   source = "./modules/aws_iam_role"
-  name = "kubernetes-master-role-${module.vpc.id}"
-  assume_role_policy = "${file("${var.iam_role["master.assume_role_policy_document"]}")}" 
+  name = "${module.cluster.master_iam_role_name}"
+  assume_role_policy = "${file("${module.cluster.iam_role["master.assume_role_policy_document"]}")}" 
 }
 
 module "minion_iam_role" {
   source = "./modules/aws_iam_role"
-  name = "kubernetes-minion-role-${module.vpc.id}"
-  assume_role_policy = "${file("${var.iam_role["minion.assume_role_policy_document"]}")}"
+  name = "${module.cluster.minion_iam_role_name}"
+  assume_role_policy = "${file("${module.cluster.iam_role["minion.assume_role_policy_document"]}")}"
 }
 
 
 /* IAM Role Policy */
-variable "iam_role_policy" {type="map"}
 
 module "master_iam_role_policy" {
   source = "./modules/aws_iam_role_policy"
-  role = "kubernetes-master-role-${module.vpc.id}"
-  name = "kubernetes-master-policy-${module.vpc.id}"
-  policy = "${file("${var.iam_role_policy["master.policy_document"]}")}" 
+  name = "${module.cluster.master_iam_role_policy_name}"
+  role = "${module.master_iam_role.name}"
+  policy = "${file("${module.cluster.iam_role_policy["master.policy_document"]}")}" 
 }
 
 module "minion_iam_role_policy" {
   source = "./modules/aws_iam_role_policy"
-  role = "kubernetes-minion-role-${module.vpc.id}"
-  name = "kubernetes-minion-policy-${module.vpc.id}"
-  policy = "${file("${var.iam_role_policy["minion.policy_document"]}")}"
+  name = "${module.cluster.minion_iam_role_policy_name}"
+  role = "${module.minion_iam_role.name}"
+  policy = "${file("${module.cluster.iam_role_policy["minion.policy_document"]}")}"
 }
 
+output "minion_role_policy" {
+  value = "${module.minion_iam_role_policy.name}"
+}
 
 /* IAM Instance Profile */
 module "master_iam_instance_profile" {
   source = "./modules/aws_iam_instance_profile"
-  role = "kubernetes-master-role-${module.vpc.id}"
-  name = "kubernetes-master-instance-profile-${module.vpc.id}"
+  role = "${module.master_iam_role.name}"
+  name = "${module.cluster.master_iam_instance_profile_name}"
 }
 
 module "minion_iam_instance_profile" {
   source = "./modules/aws_iam_instance_profile"
-  role = "kubernetes-minion-role-${module.vpc.id}"
-  name = "kubernetes-minion-instance-profile-${module.vpc.id}"
+  role = "${module.minion_iam_role.name}"
+  name = "${module.cluster.minion_iam_instance_profile_name}"
 }
 
 /* Create DHCP Option set */
 
 module "vpc_dhcp_options" {
   source = "./modules/aws_vpc_dhcp_options"
-  domain_name = "${var.region == "us-east-1" ? "ec2.internal" : join(".",list(var.region,"compute.internal"))}"
+#  domain_name = "${module.cluster.region == "us-east-1" ? "ec2.internal" : join(".",list(module.cluster.region,"compute.internal"))}"
+  domain_name = "${module.cluster.domain_name}"
   domain_name_servers = ["AmazonProvidedDNS"]
 }
 
@@ -83,13 +125,12 @@ module "vpc_dhcp_options_association" {
 
 /* Subnet Setup */
 
-variable subnet {type="map"}
 
 module "subnet" {
   source = "./modules/aws_subnet"
   vpc_id = "${module.vpc.id}"
-  cidr_block = "${var.subnet["cidr_block"]}"
-  availability_zone = "${var.subnet["availability_zone"]}"
+  cidr_block = "${module.cluster.subnet["cidr_block"]}"
+  availability_zone = "${module.cluster.zone}"
 }
 
 /* Create Internet Gateway */
@@ -123,7 +164,8 @@ module "route" {
 
 module "master_security_group" {
   source = "./modules/aws_security_group"
-  name = "kubernetes-master-${module.vpc.id}"
+#  name = "kubernetes-master-${module.vpc.id}"
+  name = "${module.cluster.master_security_group_name}"
   description = "Kubernetes security group applied to master nodes"
   vpc_id = "${module.vpc.id}"
 }
@@ -131,7 +173,8 @@ module "master_security_group" {
 
 module "minion_security_group" {
   source = "./modules/aws_security_group"
-  name = "kubernetes-minion-${module.vpc.id}"
+#  name = "kubernetes-minion-${module.vpc.id}"
+  name = "${module.cluster.minion_security_group_name}"
   description = "Kubernetes security group applied to minion nodes"
   vpc_id = "${module.vpc.id}"
 }
@@ -187,7 +230,6 @@ module "min_to_mas_security_group_rule" {
 }
 
 # SSH to Master
-variable "security_group_ingress" {type="map"}
 
 module "master_ssh_security_group_ingress" {
   source = "./modules/aws_security_group_rule_cidr"
@@ -196,7 +238,7 @@ module "master_ssh_security_group_ingress" {
   to_port = 22
   protocol = "tcp"
   security_group_id = "${module.master_security_group.id}"
-  cidr_blocks = "${var.security_group_ingress["master.ssh"]}"
+  cidr_blocks = "${module.cluster.security_group_ingress["master.ssh"]}"
 }
 
 # SSH to Minion
@@ -208,7 +250,7 @@ module "minion_ssh_security_group_ingress" {
   to_port = 22
   protocol = "tcp"
   security_group_id = "${module.minion_security_group.id}"
-  cidr_blocks = "${var.security_group_ingress["minion.ssh"]}"
+  cidr_blocks = "${module.cluster.security_group_ingress["minion.ssh"]}"
 }
 
 # HTTPS to Master
@@ -220,17 +262,63 @@ module "master_https_security_group_ingress" {
   to_port = 443
   protocol = "tcp"
   security_group_id = "${module.master_security_group.id}"
-  cidr_blocks = "${var.security_group_ingress["master.https"]}"
+  cidr_blocks = "${module.cluster.security_group_ingress["master.https"]}"
 }
 
 
 /* SSH Key setup */
-variable "ssh_key" {type = "map"}
 
 module "key_pair" {
   source = "./modules/aws_key_pair"
   key_name = "${file("init/fingerprint.txt")}"
-  public_key = "${file(var.ssh_key["key_file"])}"
+  public_key = "${file(join(".",list(module.cluster.ssh_key["key_file"],"pub")))}"
 } 
 
+/* Start Minions 
 
+module "launch_configuration" {
+  source = "./modules/aws_launch_configuration"
+  name = "${module.cluster.asg_name}"
+#  image_id = "${module.cluster.images[module.cluster.region]}"
+  image_id = "${moudule.cluster.ami}"
+  iam_instance_profile = "${module.minion_iam_instance_profile.id}"
+#  instance_type = "${module.cluster.size["minion"]}"
+  instance_type = "${module.cluster.minion_size}"
+  key_name = "${module.key_pair.key_name}"
+# There is a bug. This is not allowing me to send a list. 
+  security_groups = ["${module.minion_security_group.id}"]
+  associate_public_ip_address = "${module.cluster.associate_public_ip_address}"
+  spot_price = "${module.cluster.spot_price}"
+  user_data = ""
+}
+
+# Create auto scaling group for minions 
+
+module "autoscaling_group" {
+  source = "./modules/aws_autoscaling_group"
+  name = "${module.launch_configuration.name}"
+  launch_configuration = "${module.cluster.asg_name}"
+  min_size = "${module.cluster.number_of_minions["min"]}"
+  max_size = "${module.cluster.number_of_minions["max"]}"
+  vpc_zone_identifier = ["${module.subnet.id}"]
+  tag = []
+}
+*/
+
+# Start master
+
+module "instance" {
+  source = "./modules/aws_instance"
+  ami = "${module.cluster.ami}"
+  iam_instance_profile = "${module.master_iam_instance_profile.id}"
+  instance_type = "${module.cluster.master_size}"
+  subnet_id = "${module.subnet.id}"
+  key_name = "${module.key_pair.key_name}"
+# There is a bug. This is not allowing me to send a list.
+  vpc_security_group_ids = ["${module.master_security_group.id}"]
+  associate_public_ip_address = true
+  private_ip = "${module.cluster.master_private_ip}"
+  user_data = ""
+  ebs_block_device = []
+  tags = {}
+}

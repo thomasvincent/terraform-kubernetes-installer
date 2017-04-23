@@ -1,5 +1,26 @@
+# Provider
+provider = "aws"
+
 # Region
 region = "us-west-2"
+
+# Zone
+zone = "us-west-2a"
+
+# Cluster Name
+cluster_name = "hello-world"
+
+# VPC Name
+vpc_name = "kubernetes-vpc"
+
+# Machine size
+size = {
+  master = "t1.micro"
+  minion = "t1.micro"
+}
+
+# No. of minions
+node_size = "3"
 
 # IAM PROFILE CONFIGURATIONS
 
@@ -39,6 +60,8 @@ ssh_key = {
   key_file = "~/.ssh/id_rsa"
 }
 
+/* Create Launch Configuration for minions */
+
 # Ubuntu 16.04 LTS amd64 official Images (https://cloud-images.ubuntu.com/locator/ec2/)
 images = {
   ap-south-1      = "ami-c2ee9dad"
@@ -58,3 +81,22 @@ images = {
   us-west-2       = "ami-efd0428f"
   us-east-2       = "ami-618fab04"
 }
+
+# Optional: Enable/disable public IP assignment for minions.
+# Important Note: disable only if you have setup a NAT instance for internet access and configured appropriate routes!
+
+associate_public_ip_address = true
+
+spot_price = "0"
+
+/* Autoscaling Group */
+number_of_minions = {
+  min = 3
+  max = 3
+}
+
+# Master Instance
+
+# Takes the Subnet CIDR (refer cidr_block in Subnet Configuration) and calculates the IP address with the given host number. For example, CIDR "172.0.0.0/24" and master_host_number = 9, returns 172.0.0.9
+
+master_host_number = 9

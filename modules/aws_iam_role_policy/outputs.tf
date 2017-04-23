@@ -13,3 +13,4 @@ output "policy" {
 output "role" {
   value = "${aws_iam_role_policy.aws_iam_role_policy.role}"
 }
+

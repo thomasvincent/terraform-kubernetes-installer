@@ -10,3 +10,4 @@ terraform apply -var-file $config_file
 cd $root
 terraform get
 terraform plan -var-file $config_file
+#terraform apply -var-file $config_file

@@ -12,7 +12,7 @@ if [ ! -f ${var.key_file}.pub ]; then
   ssh-keygen -f ${var.key_file} -N ""
 fi
 
-ssh-keygen -E md5 -lf ${var.key_file} | cut -f2 -d" " > fingerprint.txt
+ssh-keygen -E md5 -lf ${var.key_file} | awk -F " " '{printf("%s",$2)}' > fingerprint.txt
 
 EOF
   }
