@@ -6,6 +6,22 @@ output "cluster_name" {
   value = "${var.cluster_name}"
 }
 
+output "master_name" {
+  value = "${join("-",var.cluster_name,"master")}"
+}
+
+output "minion_name" {
+  value = "${join("-",var.cluster_name,"minion")}"
+}
+
+output "master_tag" {
+  value = "${join("-",var.cluster_name,"master")}"
+}
+
+output "minion_tag" {
+  value = "${join("-",var.cluster_name,"minion")}"
+}
+
 output "region" {
   value = "${var.region}"
 }

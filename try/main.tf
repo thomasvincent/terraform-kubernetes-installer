@@ -1,3 +1,17 @@
-output "test" {
-  value = "${cidrhost("172.20.0.0/24",9)}"
+variable "a" {
+  type="map"
+  default = {
+   "Name" = "master-pd"
+  "K8Clus" = "clus-id"
+  }
+}
+variable "b" {
+  type="map"
+  default = {
+  "Random" = "random"
+  }
+}
+
+output "again" {
+  value = "${merge(var.a,var.b)}"
 }

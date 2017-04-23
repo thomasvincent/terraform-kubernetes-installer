@@ -42,6 +42,18 @@ module "cluster" {
   number_of_minions = "${var.number_of_minions}" 
 }
 
+/* Tag helper module */
+module "tags" {
+  source = "./modules/util_tags"
+  vpc_name = "${module.cluster.vpc_name}"
+  cluster_name = "${module.cluster.cluster_name}"
+  master_name = "${module.cluster.master_name}"
+  master_tag = "${module.cluster.master_tag}"
+  asg_name = "${module.cluster.asg_name}"
+  minion_name = "${module.cluster.minion_name}"
+  minion_tag = "${module.cluster.minion_tag}"
+}
+
 provider "aws" {
   region = "${module.cluster.region}"
 }
@@ -52,6 +64,7 @@ provider "aws" {
 module "vpc" {
   source = "./modules/aws_vpc"
   cidr_block = "${module.cluster.vpc["cidr_block"]}"
+  tags = "${module.tags.vpc}"
 }
 
 output "vpc_id" {
@@ -115,6 +128,7 @@ module "vpc_dhcp_options" {
 #  domain_name = "${module.cluster.region == "us-east-1" ? "ec2.internal" : join(".",list(module.cluster.region,"compute.internal"))}"
   domain_name = "${module.cluster.domain_name}"
   domain_name_servers = ["AmazonProvidedDNS"]
+  tags = "${module.tags.dhcp}"
 }
 
 module "vpc_dhcp_options_association" {
@@ -131,6 +145,7 @@ module "subnet" {
   vpc_id = "${module.vpc.id}"
   cidr_block = "${module.cluster.subnet["cidr_block"]}"
   availability_zone = "${module.cluster.zone}"
+  tags = "${module.tags.subnet}"
 }
 
 /* Create Internet Gateway */
@@ -143,6 +158,7 @@ module "internet_gateway" {
 module "route_table" {
   source = "./modules/aws_route_table"
   vpc_id = "${module.vpc.id}"
+  tags = "${module.tags.route_table}"
 }
 
 /* Associate Route Table */
@@ -168,6 +184,7 @@ module "master_security_group" {
   name = "${module.cluster.master_security_group_name}"
   description = "Kubernetes security group applied to master nodes"
   vpc_id = "${module.vpc.id}"
+  tags = "${module.tags.security_group}"
 }
 
 
@@ -177,6 +194,7 @@ module "minion_security_group" {
   name = "${module.cluster.minion_security_group_name}"
   description = "Kubernetes security group applied to minion nodes"
   vpc_id = "${module.vpc.id}"
+  tags = "${module.tags.security_group}"
 }
 
 /* Authorize Security group ingress */
@@ -274,13 +292,13 @@ module "key_pair" {
   public_key = "${file(join(".",list(module.cluster.ssh_key["key_file"],"pub")))}"
 } 
 
-/* Start Minions 
+/* Start Minions */
 
 module "launch_configuration" {
   source = "./modules/aws_launch_configuration"
   name = "${module.cluster.asg_name}"
 #  image_id = "${module.cluster.images[module.cluster.region]}"
-  image_id = "${moudule.cluster.ami}"
+  image_id = "${module.cluster.ami}"
   iam_instance_profile = "${module.minion_iam_instance_profile.id}"
 #  instance_type = "${module.cluster.size["minion"]}"
   instance_type = "${module.cluster.minion_size}"
@@ -301,9 +319,8 @@ module "autoscaling_group" {
   min_size = "${module.cluster.number_of_minions["min"]}"
   max_size = "${module.cluster.number_of_minions["max"]}"
   vpc_zone_identifier = ["${module.subnet.id}"]
-  tag = []
+  tag = "${module.tags.minion}"
 }
-*/
 
 # Start master
 
