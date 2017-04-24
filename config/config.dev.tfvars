@@ -15,12 +15,9 @@ vpc_name = "kubernetes-vpc"
 
 # Machine size
 size = {
-  master = "t1.micro"
-  minion = "t1.micro"
+  master = "t2.micro"
+  minion = "t2.micro"
 }
-
-# No. of minions
-node_size = "3"
 
 # IAM PROFILE CONFIGURATIONS
 
@@ -45,6 +42,8 @@ subnet = {
   availability_zone = "us-west-2a"
 }
 
+# Master IP Range
+master_ip_range = "10.246.0.0/24"
 
 # In-bound Traffic Controls (Security Group Ingress)
 
@@ -57,7 +56,7 @@ security_group_ingress = {
 # SSH Key Setup
 ssh_key = {
 # Creates a new SSH Key file if the file does not exist. (Specify w/o .pub)
-  key_file = "~/.ssh/id_rsa"
+  key_file = "~/.ssh/id_rsa_ubuntu"
 }
 
 /* Create Launch Configuration for minions */
@@ -78,6 +77,8 @@ images = {
   ap-southeast-2  = "ami-96666ff5"
   eu-west-2       = "ami-f1d7c395"
   ap-northeast-2  = "ami-66e33108"
+#  us-west-2       = "ami-efd0428f"
+# Using Ubuntu Server 16.04 LTS (HVM), SSD Volume Type (Free Tier eligible)
   us-west-2       = "ami-efd0428f"
   us-east-2       = "ami-618fab04"
 }
@@ -91,8 +92,8 @@ spot_price = "0"
 
 /* Autoscaling Group */
 number_of_minions = {
-  min = 3
-  max = 3
+  min = 1
+  max = 1
 }
 
 # Master Instance
@@ -100,3 +101,14 @@ number_of_minions = {
 # Takes the Subnet CIDR (refer cidr_block in Subnet Configuration) and calculates the IP address with the given host number. For example, CIDR "172.0.0.0/24" and master_host_number = 9, returns 172.0.0.9
 
 master_host_number = 9
+
+# Startup Volume
+# 
+
+startup_volume = {
+  volume_type = "gp2"
+  volume_size = "8"
+  iops = "0"
+  delete_on_termination = true
+  encrypted = false
+}

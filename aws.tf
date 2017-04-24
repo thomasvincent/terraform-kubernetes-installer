@@ -18,6 +18,8 @@ variable "ssh_key" {type = "map"}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
 variable "number_of_minions" {type="map"}
+variable "startup_volume" {type="map"}
+variable "master_ip_range" {}
 
 module "cluster" {
   source = "./modules/util_cluster"
@@ -40,6 +42,8 @@ module "cluster" {
   associate_public_ip_address = "${var.associate_public_ip_address}" 
   spot_price = "${var.spot_price}" 
   number_of_minions = "${var.number_of_minions}" 
+  startup_volume = "${var.startup_volume}"
+  master_ip_range = "${var.master_ip_range}"
 }
 
 /* Tag helper module */
@@ -58,6 +62,13 @@ provider "aws" {
   region = "${module.cluster.region}"
 }
 
+
+/* AMI */
+
+module "ami" {
+  source = "./modules/query/aws_ami"
+  image_id = "${module.cluster.ami}"
+}
 
 #VPC
 
@@ -306,7 +317,11 @@ module "launch_configuration" {
 # There is a bug. This is not allowing me to send a list. 
   security_groups = ["${module.minion_security_group.id}"]
   associate_public_ip_address = "${module.cluster.associate_public_ip_address}"
-  spot_price = "${module.cluster.spot_price}"
+# Not required... Creates a spot instance
+#  spot_price = "${module.cluster.spot_price}"
+# There is a bug here. aws_launch_configuration does not accept list of maps.
+#  ebs_block_device = "${list(jsonencode(merge(module.ami.root_device_name,module.cluster.startup_volume)))}"
+  root_device_name = "${module.ami.root_device_name}"
   user_data = ""
 }
 
@@ -319,7 +334,8 @@ module "autoscaling_group" {
   min_size = "${module.cluster.number_of_minions["min"]}"
   max_size = "${module.cluster.number_of_minions["max"]}"
   vpc_zone_identifier = ["${module.subnet.id}"]
-  tag = "${module.tags.minion}"
+  #tag = "${module.tags.minion}"
+  tag = []
 }
 
 # Start master
@@ -337,5 +353,44 @@ module "instance" {
   private_ip = "${module.cluster.master_private_ip}"
   user_data = ""
   ebs_block_device = []
-  tags = {}
+  tags = "${module.tags.master}"
+}
+
+# Allocate elastic IP
+
+module "eip" {
+  source = "./modules/aws_eip"
+}
+output "public_ip" {
+  value = "${module.eip.public_ip}"
+}
+output "private_ip" {
+  value = "{module.eip.private_ip}"
+}
+
+#  Associate EIP to instance
+
+module "eip_association" {
+  source = "./modules/aws_eip_association"
+  instance_id = "${module.instance.id}"
+  allocation_id = "${module.eip.id}"
+}
+
+/*
+# Create Volume
+
+module "aws_ebs_volume" {
+  availability_zone = "${module.cluster.zone}"
+  type = "${module.cluster.master_disk_type}"
+  size = "${module.cluster.master_disk_size}"
+  tags = "${module.tags.volume}"
+}
+*/
+
+/* Create Route to Master*/
+module "route_master" {
+  source = "./modules/aws_route_master"
+  instance_id = "${module.instance.id}"
+  destination_cidr_block = "${module.cluster.master_ip_range}"
+  route_table_id = "${module.route_table.id}"
 }

@@ -124,4 +124,11 @@ output "provider" {
 output "zone" {
   value = "${var.zone}"
 }
+output "startup_volume" {
+  value = "${var.startup_volume}"
+}
+
+output "master_ip_range" {
+  value = "${var.master_ip_range}"
+}
 

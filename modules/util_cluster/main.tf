@@ -16,4 +16,5 @@ variable "ssh_key" {type = "map"}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
 variable "number_of_minions" {type="map"}
-
+variable "startup_volume" {type="map"}
+variable "master_ip_range" {}

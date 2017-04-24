@@ -1,17 +1,8 @@
-variable "a" {
-  type="map"
-  default = {
-   "Name" = "master-pd"
-  "K8Clus" = "clus-id"
-  }
-}
-variable "b" {
-  type="map"
-  default = {
-  "Random" = "random"
-  }
+module "test" {
+  source ="./modules"
+  test = "${list(map("name","sud"))}"
 }
 
-output "again" {
-  value = "${merge(var.a,var.b)}"
+output "test" {
+  value = "${module.test.test}"
 }

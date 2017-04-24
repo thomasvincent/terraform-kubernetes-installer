@@ -19,6 +19,11 @@ resource "aws_instance" "aws_instance" {
   vpc_security_group_ids = ["${var.vpc_security_group_ids}"]
   associate_public_ip_address = "${var.associate_public_ip_address}"
   ebs_block_device = "${var.ebs_block_device}"
+  root_block_device {
+    volume_type = "gp2"
+    volume_size = "8"
+    delete_on_termination = true
+  }
   user_data = "${var.user_data}"
   tags = "${var.tags}"  
 }

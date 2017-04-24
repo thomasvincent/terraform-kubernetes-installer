@@ -1,5 +1,4 @@
-variable "m_test" {type="list"}
-
-output "m_op" {
-  value = "${var.m_test}"
+variable "test" {type="list"}
+output "test" {
+  value = "${var.test}"
 }
