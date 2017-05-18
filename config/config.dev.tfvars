@@ -38,7 +38,9 @@ vpc = {
 
 # Subnet Configuration
 subnet = {
-  cidr_block = "172.20.0.0/24"
+  master.cidr_block = "172.20.0.0/24"
+# Minion CIDR config
+  cidr_block = "172.20.1.0/24"
   availability_zone = "us-west-2a"
 }
 
@@ -51,6 +53,13 @@ security_group_ingress = {
   master.ssh = ["0.0.0.0/0"]
   minion.ssh = ["0.0.0.0/0"]
   master.https = ["0.0.0.0/0"]
+}
+
+# Out-bound Traffic Controls (Security Group Egress)
+
+security_group_egress = {
+  master = ["0.0.0.0/0"]
+  minion = ["0.0.0.0/0"]
 }
 
 # SSH Key Setup

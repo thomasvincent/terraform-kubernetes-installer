@@ -71,7 +71,7 @@ output "minion_security_group_name" {
 }
 
 output "master_private_ip" {
-  value = "${cidrhost(var.subnet_cidr,var.master_host_number)}"
+  value = "${cidrhost(var.master_cidr,var.master_host_number)}"
 }
 
 output "master_host_number" {
@@ -104,6 +104,9 @@ output "subnet" {
 }
 output "security_group_ingress" {
   value = "${var.security_group_ingress}"
+}
+output "security_group_egress" {
+  value = "${var.security_group_egress}"
 }
 output "ssh_key" {
   value = "${var.ssh_key}"

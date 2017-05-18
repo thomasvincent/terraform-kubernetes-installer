@@ -14,6 +14,7 @@ variable "iam_role" {type="map"}
 variable "iam_role_policy" {type="map"}
 variable "subnet" {type="map"}
 variable "security_group_ingress" {type="map"}
+variable "security_group_egress" {type="map"}
 variable "ssh_key" {type = "map"}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
@@ -28,6 +29,7 @@ module "cluster" {
   provider = "${var.provider}"
   vpc_name = "${var.vpc_name}"
   subnet_cidr = "${var.subnet["cidr_block"]}"
+  master_cidr = "${var.subnet["master.cidr_block"]}"
   region = "${var.region}"
   master_host_number = "${var.master_host_number}"
   images = "${var.images}"
@@ -38,6 +40,7 @@ module "cluster" {
   iam_role_policy = "${var.iam_role_policy}"
   subnet = "${var.subnet}"
   security_group_ingress = "${var.security_group_ingress}"
+  security_group_egress = "${var.security_group_egress}"
   ssh_key = "${var.ssh_key}" 
   associate_public_ip_address = "${var.associate_public_ip_address}" 
   spot_price = "${var.spot_price}" 
@@ -155,6 +158,16 @@ module "subnet" {
   source = "./modules/aws_subnet"
   vpc_id = "${module.vpc.id}"
   cidr_block = "${module.cluster.subnet["cidr_block"]}"
+  availability_zone = "${module.cluster.zone}"
+  tags = "${module.tags.subnet}"
+}
+
+/* Master Subnet Setup */
+
+module "master_subnet" {
+  source = "./modules/aws_subnet"
+  vpc_id = "${module.vpc.id}"
+  cidr_block = "${module.cluster.subnet["master.cidr_block"]}"
   availability_zone = "${module.cluster.zone}"
   tags = "${module.tags.subnet}"
 }
@@ -294,6 +307,30 @@ module "master_https_security_group_ingress" {
   cidr_blocks = "${module.cluster.security_group_ingress["master.https"]}"
 }
 
+# Master can send requests to CIDR range (Outbound traffic)
+
+module "master_egress_security_group_ingress" {
+  source = "./modules/aws_security_group_rule_cidr"
+  type = "egress"
+  from_port = 0
+  to_port = 0
+  protocol = "-1"
+  security_group_id = "${module.master_security_group.id}"
+  cidr_blocks = "${module.cluster.security_group_egress["master"]}"
+}
+
+# Minion can send requests to CIDR range (Outbound traffic)
+
+module "minion_egress_security_group_ingress" {
+  source = "./modules/aws_security_group_rule_cidr"
+  type = "egress"
+  from_port = 0
+  to_port = 0
+  protocol = "-1"
+  security_group_id = "${module.minion_security_group.id}"
+  cidr_blocks = "${module.cluster.security_group_egress["minion"]}"
+}
+
 
 /* SSH Key setup */
 
@@ -345,7 +382,7 @@ module "instance" {
   ami = "${module.cluster.ami}"
   iam_instance_profile = "${module.master_iam_instance_profile.id}"
   instance_type = "${module.cluster.master_size}"
-  subnet_id = "${module.subnet.id}"
+  subnet_id = "${module.master_subnet.id}"
   key_name = "${module.key_pair.key_name}"
 # There is a bug. This is not allowing me to send a list.
   vpc_security_group_ids = ["${module.master_security_group.id}"]
@@ -387,10 +424,33 @@ module "aws_ebs_volume" {
 }
 */
 
-/* Create Route to Master*/
-module "route_master" {
+/* Create Route to Master
+module "master_route" {
   source = "./modules/aws_route_master"
   instance_id = "${module.instance.id}"
   destination_cidr_block = "${module.cluster.master_ip_range}"
   route_table_id = "${module.route_table.id}"
+}
+*/
+
+/* Master Route Table */
+module "master_route_table" {
+  source = "./modules/aws_route_table"
+  vpc_id = "${module.vpc.id}"
+  tags = "${module.tags.route_table}"
+}
+
+/* Associate master subnet to Route Table */
+module "master_route_table_association" {
+  source = "./modules/aws_route_table_association"
+  route_table_id = "${module.master_route_table.id}"
+  subnet_id = "${module.master_subnet.id}"
+}
+
+/* Create Master Route */
+module "master_route" {
+  source = "./modules/aws_route"
+  gateway_id = "${module.internet_gateway.id}"
+  destination_cidr_block = "0.0.0.0/0"
+  route_table_id = "${module.master_route_table.id}"
 }

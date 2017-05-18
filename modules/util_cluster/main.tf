@@ -3,6 +3,7 @@ variable zone {}
 variable provider {}
 variable vpc_name {}
 variable subnet_cidr {}
+variable master_cidr {}
 variable region {}
 variable master_host_number {}
 variable "images" {type="map"}
@@ -12,6 +13,7 @@ variable "iam_role" {type="map"}
 variable "iam_role_policy" {type="map"}
 variable "subnet" {type="map"}
 variable "security_group_ingress" {type="map"}
+variable "security_group_egress" {type="map"}
 variable "ssh_key" {type = "map"}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
