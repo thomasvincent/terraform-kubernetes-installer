@@ -2,6 +2,10 @@ output "asg_name" {
   value = "${join("-",list(var.cluster_name,"minion-group",var.zone))}"
 }
 
+output "ssh_user" {
+  value = "${var.ssh_user}"
+}
+
 output "cluster_name" {
   value = "${var.cluster_name}"
 }

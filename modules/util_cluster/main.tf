@@ -15,6 +15,7 @@ variable "subnet" {type="map"}
 variable "security_group_ingress" {type="map"}
 variable "security_group_egress" {type="map"}
 variable "ssh_key" {type = "map"}
+variable "ssh_user" {}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
 variable "number_of_minions" {type="map"}

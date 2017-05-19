@@ -16,6 +16,7 @@ variable "subnet" {type="map"}
 variable "security_group_ingress" {type="map"}
 variable "security_group_egress" {type="map"}
 variable "ssh_key" {type = "map"}
+variable "ssh_user" {}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
 variable "number_of_minions" {type="map"}
@@ -42,6 +43,7 @@ module "cluster" {
   security_group_ingress = "${var.security_group_ingress}"
   security_group_egress = "${var.security_group_egress}"
   ssh_key = "${var.ssh_key}" 
+  ssh_user = "${var.ssh_user}"
   associate_public_ip_address = "${var.associate_public_ip_address}" 
   spot_price = "${var.spot_price}" 
   number_of_minions = "${var.number_of_minions}" 
@@ -359,7 +361,8 @@ module "launch_configuration" {
 # There is a bug here. aws_launch_configuration does not accept list of maps.
 #  ebs_block_device = "${list(jsonencode(merge(module.ami.root_device_name,module.cluster.startup_volume)))}"
   root_device_name = "${module.ami.root_device_name}"
-  user_data = ""
+  user_data = "${file("kubeinstall/setup_node")}"
+  depends_on = ["module.instance"]
 }
 
 # Create auto scaling group for minions 
@@ -370,6 +373,7 @@ module "autoscaling_group" {
   launch_configuration = "${module.cluster.asg_name}"
   min_size = "${module.cluster.number_of_minions["min"]}"
   max_size = "${module.cluster.number_of_minions["max"]}"
+  desired_capacity = "${module.cluster.number_of_minions["desired"]}"
   vpc_zone_identifier = ["${module.subnet.id}"]
   #tag = "${module.tags.minion}"
   tag = []
@@ -388,7 +392,7 @@ module "instance" {
   vpc_security_group_ids = ["${module.master_security_group.id}"]
   associate_public_ip_address = true
   private_ip = "${module.cluster.master_private_ip}"
-  user_data = ""
+  user_data = "${file("kubeinstall/setup_master")}"
   ebs_block_device = []
   tags = "${module.tags.master}"
 }
@@ -454,3 +458,27 @@ module "master_route" {
   destination_cidr_block = "0.0.0.0/0"
   route_table_id = "${module.master_route_table.id}"
 }
+
+/* SSH to Master */
+module "ssh" {
+  source = "./modules/util_ssh"
+  type = "ssh"
+  private_key = "${file(module.cluster.ssh_key["key_file"])}"
+  source_file = "./kubeinstall/setup_master"
+  destination = "${join("",list("/home/",module.cluster.ssh_user,"/setup_master"))}"
+  user = "${module.cluster.ssh_user}"
+  host = "${module.eip.public_ip}"
+  depends_on = ["module.instance"]
+}
+
+/* Remote execute kubernetes master install */
+#module "remote_exec" {
+#  source = "./modules/util_remote_exec"
+#  type = "ssh"
+#  private_key = "${file(module.cluster.ssh_key["key_file"])}"
+#  source_file = "./kubeinstall/setup_master"
+#  destination = "${join("",list("/home/",module.cluster.ssh_user,"/setup_master"))}"
+#  user = "${module.cluster.ssh_user}"
+#  host = "${module.eip.public_ip}"
+#  depends_on = ["module.instance"]
+#}

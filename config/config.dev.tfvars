@@ -68,6 +68,8 @@ ssh_key = {
   key_file = "~/.ssh/id_rsa_ubuntu"
 }
 
+ssh_user = "ubuntu"
+
 /* Create Launch Configuration for minions */
 
 # Ubuntu 16.04 LTS amd64 official Images (https://cloud-images.ubuntu.com/locator/ec2/)
@@ -102,7 +104,8 @@ spot_price = "0"
 /* Autoscaling Group */
 number_of_minions = {
   min = 1
-  max = 1
+  max = 3
+  desired = 3
 }
 
 # Master Instance
