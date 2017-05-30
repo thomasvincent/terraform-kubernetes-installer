@@ -115,12 +115,7 @@ number_of_masters = {
   desired = 2
 }
 
-# Master Instance
-
-# Takes the Subnet CIDR (refer cidr_block in Subnet Configuration) and calculates the IP address with the given host number. For example, CIDR "172.0.0.0/24" and master_host_number = 9, returns 172.0.0.9
-
-master_host_number = 1
-
+#
 # Startup Volume
 # 
 
