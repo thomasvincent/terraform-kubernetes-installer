@@ -38,7 +38,7 @@ vpc = {
 
 # Subnet Configuration
 subnet = {
-  master.cidr_block = "172.20.0.0/24"
+  master.cidr_block = "172.20.0.0/28"
 # Minion CIDR config
   cidr_block = "172.20.1.0/24"
   availability_zone = "us-west-2a"
@@ -101,18 +101,25 @@ associate_public_ip_address = true
 
 spot_price = "0"
 
-/* Autoscaling Group */
+/* Autoscaling Group for minions*/
 number_of_minions = {
   min = 1
   max = 3
-  desired = 3
+  desired = 2
+}
+
+/* Autoscaling Group for masters*/
+number_of_masters = {
+  min = 1
+  max = 2
+  desired = 2
 }
 
 # Master Instance
 
 # Takes the Subnet CIDR (refer cidr_block in Subnet Configuration) and calculates the IP address with the given host number. For example, CIDR "172.0.0.0/24" and master_host_number = 9, returns 172.0.0.9
 
-master_host_number = 9
+master_host_number = 1
 
 # Startup Volume
 # 

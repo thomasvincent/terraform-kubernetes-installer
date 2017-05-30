@@ -1,0 +1,17 @@
+[Unit]
+Description=Terrakube - Starts Kubernetes proxy on master
+After=network.target
+
+[Service]
+PIDFile=/run/terrakube-proxy.pid
+ExecStart=/usr/sbin/terrakube-proxy
+ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/terrakube-proxy.pid
+TimeoutStopSec=5
+KillMode=mixed
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+
+
+[Install]
+WantedBy=multi-user.target

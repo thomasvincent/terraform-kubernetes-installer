@@ -1,0 +1,26 @@
+#!/usr/bin/python3
+
+from k8sDiscovery import discovery
+import os
+import time
+import sys
+import subprocess
+
+if __name__ == '__main__' :
+    try:
+        master_subnet = os.environ['TERRAKUBE_MASTER_SUBNET']
+    except:
+        res=subprocess.run('sudo /etc/profile.d/terrakube-init.sh',shell=True,stdout=subprocess.PIPE)
+        if (res.stdout != "" ):
+            master_subnet = res.stdout.strip().decode('utf-8')
+        else:
+            raise
+
+    m=discovery(master_subnet)
+    while True:
+        try:
+            m.node_bootstrap()
+            print('Node Bootstrap sleeping at - ' + str(time.ctime()))
+        except:
+            print('Error in Node Bootstrap ' + str(sys.exc_info()) + ' at ' + str(time.ctime()))
+        time.sleep(300)

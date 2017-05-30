@@ -9,7 +9,6 @@ variable "associate_public_ip_address" {}
 variable "user_data" {}
 #variable "ebs_block_device" {type="list"}
 variable "root_device_name" {}
-variable "depends_on" {}
 
 resource "aws_launch_configuration" "aws_launch_configuration" {
   name = "${var.name}"

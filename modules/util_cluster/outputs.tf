@@ -2,6 +2,10 @@ output "asg_name" {
   value = "${join("-",list(var.cluster_name,"minion-group",var.zone))}"
 }
 
+output "master_asg_name" {
+  value = "${join("-",list(var.cluster_name,"master-group",var.zone))}"
+}
+
 output "ssh_user" {
   value = "${var.ssh_user}"
 }
@@ -123,6 +127,10 @@ output "spot_price" {
 }
 output "number_of_minions" {
   value = "${var.number_of_minions}"
+}
+
+output "number_of_masters" {
+  value = "${var.number_of_masters}"
 }
 
 output "provider" {

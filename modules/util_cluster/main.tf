@@ -19,5 +19,6 @@ variable "ssh_user" {}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
 variable "number_of_minions" {type="map"}
+variable "number_of_masters" {type="map"}
 variable "startup_volume" {type="map"}
 variable "master_ip_range" {}

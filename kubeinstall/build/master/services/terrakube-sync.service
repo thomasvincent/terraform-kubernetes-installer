@@ -1,0 +1,17 @@
+[Unit]
+Description=Terrakube - Syncs namespaces and resources on Masters 
+After=network.target terrakube-proxy.service
+
+[Service]
+PIDFile=/run/terrakube-sync.pid
+ExecStart=/usr/sbin/terrakube-sync
+ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/terrakube-sync.pid
+TimeoutStopSec=5
+KillMode=mixed
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+
+
+[Install]
+WantedBy=multi-user.target

@@ -20,6 +20,7 @@ variable "ssh_user" {}
 variable "associate_public_ip_address" {}
 variable "spot_price" {}
 variable "number_of_minions" {type="map"}
+variable "number_of_masters" {type="map"}
 variable "startup_volume" {type="map"}
 variable "master_ip_range" {}
 
@@ -47,6 +48,7 @@ module "cluster" {
   associate_public_ip_address = "${var.associate_public_ip_address}" 
   spot_price = "${var.spot_price}" 
   number_of_minions = "${var.number_of_minions}" 
+  number_of_masters = "${var.number_of_masters}" 
   startup_volume = "${var.startup_volume}"
   master_ip_range = "${var.master_ip_range}"
 }
@@ -361,8 +363,7 @@ module "launch_configuration" {
 # There is a bug here. aws_launch_configuration does not accept list of maps.
 #  ebs_block_device = "${list(jsonencode(merge(module.ami.root_device_name,module.cluster.startup_volume)))}"
   root_device_name = "${module.ami.root_device_name}"
-  user_data = "${file("kubeinstall/setup_node")}"
-  depends_on = ["module.instance"]
+  user_data = "${join(" ",list(file("kubeinstall/setup.sh"),"main node",module.cluster.subnet["master.cidr_block"],";"))}"
 }
 
 # Create auto scaling group for minions 
@@ -379,24 +380,35 @@ module "autoscaling_group" {
   tag = []
 }
 
-# Start master
-
-module "instance" {
-  source = "./modules/aws_instance"
-  ami = "${module.cluster.ami}"
+# Autoscaling group for Master
+module "master_launch_configuration" {
+  source = "./modules/aws_launch_configuration"
+  name = "${module.cluster.master_asg_name}"
+  image_id = "${module.cluster.ami}"
   iam_instance_profile = "${module.master_iam_instance_profile.id}"
   instance_type = "${module.cluster.master_size}"
-  subnet_id = "${module.master_subnet.id}"
   key_name = "${module.key_pair.key_name}"
-# There is a bug. This is not allowing me to send a list.
-  vpc_security_group_ids = ["${module.master_security_group.id}"]
+  security_groups = ["${module.master_security_group.id}"]
   associate_public_ip_address = true
-  private_ip = "${module.cluster.master_private_ip}"
-  user_data = "${file("kubeinstall/setup_master")}"
-  ebs_block_device = []
-  tags = "${module.tags.master}"
+  root_device_name = "${module.ami.root_device_name}"
+  user_data = "${join(" ",list(file("kubeinstall/setup.sh"),"main master",module.cluster.subnet["master.cidr_block"],";"))}"
+  #user_data = "${file("kubeinstall/setup_master.sh")}"
+}
+# Create auto scaling group for master
+
+module "master_autoscaling_group" {
+  source = "./modules/aws_autoscaling_group"
+  name = "${module.master_launch_configuration.name}"
+  launch_configuration = "${module.cluster.master_asg_name}"
+  min_size = "${module.cluster.number_of_masters["min"]}"
+  max_size = "${module.cluster.number_of_masters["max"]}"
+  desired_capacity = "${module.cluster.number_of_masters["desired"]}"
+  vpc_zone_identifier = ["${module.master_subnet.id}"]
+  tag = []
 }
 
+
+/*
 # Allocate elastic IP
 
 module "eip" {
@@ -416,6 +428,7 @@ module "eip_association" {
   instance_id = "${module.instance.id}"
   allocation_id = "${module.eip.id}"
 }
+*/
 
 /*
 # Create Volume
@@ -425,15 +438,6 @@ module "aws_ebs_volume" {
   type = "${module.cluster.master_disk_type}"
   size = "${module.cluster.master_disk_size}"
   tags = "${module.tags.volume}"
-}
-*/
-
-/* Create Route to Master
-module "master_route" {
-  source = "./modules/aws_route_master"
-  instance_id = "${module.instance.id}"
-  destination_cidr_block = "${module.cluster.master_ip_range}"
-  route_table_id = "${module.route_table.id}"
 }
 */
 
@@ -459,7 +463,7 @@ module "master_route" {
   route_table_id = "${module.master_route_table.id}"
 }
 
-/* SSH to Master */
+/* SSH to Master 
 module "ssh" {
   source = "./modules/util_ssh"
   type = "ssh"
@@ -468,8 +472,8 @@ module "ssh" {
   destination = "${join("",list("/home/",module.cluster.ssh_user,"/setup_master"))}"
   user = "${module.cluster.ssh_user}"
   host = "${module.eip.public_ip}"
-  depends_on = ["module.instance"]
 }
+*/
 
 /* Remote execute kubernetes master install */
 #module "remote_exec" {
