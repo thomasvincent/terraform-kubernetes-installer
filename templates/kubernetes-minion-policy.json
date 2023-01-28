@@ -3,24 +3,17 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": "s3:*",
-      "Resource": [
-        "arn:aws:s3:::kubernetes-*"
-      ]
+      "Action": ["s3:*"],
+      "Resource": ["arn:aws:s3:::kubernetes-*"]
     },
     {
       "Effect": "Allow",
-      "Action": "ec2:Describe*",
+      "Action": ["ec2:Describe*"],
       "Resource": "*"
     },
     {
       "Effect": "Allow",
-      "Action": "ec2:AttachVolume",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": "ec2:DetachVolume",
+      "Action": ["ec2:AttachVolume", "ec2:DetachVolume"],
       "Resource": "*"
     },
     {
