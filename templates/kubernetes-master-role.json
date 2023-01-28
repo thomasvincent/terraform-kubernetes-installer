@@ -3,8 +3,13 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Principal": { "Service": "ec2.amazonaws.com"},
-      "Action": "sts:AssumeRole"
+      "Principal": { "Service": ["ec2.amazonaws.com"] },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "your_external_id"
+        }
+      }
     }
   ]
 }
