@@ -1,14 +1,18 @@
 #!/bin/bash
-root=$(pwd)
-config_file=$root/config/config.dev.tfvars
 
-cd $root/init
-rm terraform.tfstate
-terraform get
-terraform plan -var-file $config_file
-terraform apply -var-file $config_file
+set -eou pipefail
 
-cd $root
-terraform get
-terraform plan -var-file $config_file
-terraform apply -var-file $config_file
+root_dir=$(pwd)
+config_file="$root_dir/config/config.dev.tfvars"
+
+cd "$root_dir/init"
+
+terraform init -input=false
+terraform plan -var-file "$config_file" -out=tfplan
+terraform apply tfplan
+
+cd "$root_dir"
+
+terraform init -input=false
+terraform plan -var-file "$config_file" -out=tfplan
+terraform apply tfplan
